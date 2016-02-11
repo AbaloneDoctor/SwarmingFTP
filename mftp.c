@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <netinet/in.h>
 
 #define MAXLINE 1024
 
@@ -28,6 +29,8 @@ int main (int argc, char *argv[])
 	char arg1[MAXLINE], arg2[MAXLINE], arg3[MAXLINE];
 	char filename[MAXLINE], hostname[MAXLINE], port[MAXLINE], user[MAXLINE], 
 		password[MAXLINE], mode[MAXLINE], logfile[MAXLINE], swarmconfigfile[MAXLINE];
+	//default port is 21.	
+	strcpy( port, "21" );
 	//when mftp is run without parameters; defaults to --help
 	if( argc == 1 ) 
 	{
@@ -69,14 +72,14 @@ int main (int argc, char *argv[])
 			return 0;
 		}
 		
-		//checks if keyword requries argument. If no argument is given, exit.
+		//checks if keyword requries argument. If no proper argument is given, exit.
+		//Will exit if next word is a keyword, or if is empty
 		if( 
 		strcmp( argv[i], "-f" ) == 0 || strcmp( argv[i], "--file" ) == 0 ||
 		strcmp( argv[i], "-s" ) == 0 || strcmp( argv[i], "--server" ) == 0 ||
 		strcmp( argv[i], "-p" ) == 0 || strcmp( argv[i], "--port" ) == 0 ||
 		strcmp( argv[i], "-n" ) == 0 || strcmp( argv[i], "--username" ) == 0 ||
 		strcmp( argv[i], "-P" ) == 0 || strcmp( argv[i], "--password" ) == 0 ||
-		strcmp( argv[i], "-a" ) == 0 || strcmp( argv[i], "--active" ) == 0 ||
 		strcmp( argv[i], "-m" ) == 0 || strcmp( argv[i], "--mode" ) == 0 ||
 		strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "--log" ) == 0 ||
 		strcmp( argv[i], "-w" ) == 0 || strcmp( argv[i], "--swarm" ) == 0 ) 
@@ -106,44 +109,51 @@ int main (int argc, char *argv[])
 		if( strcmp( argv[i], "-f" ) == 0 || strcmp( argv[i], "--file" ) == 0 ) 
 		{
 			fileFlag = 1;
-			strcpy( filename, argv[i+1] );		
+			strcpy( filename, argv[i+1] );	
+			i++;	
 		}
 
 		if( strcmp( argv[i], "-s" ) == 0 || strcmp( argv[i], "--server" ) == 0 ) 
 		{
 			serverFlag = 1;
-			strcpy( hostname, argv[i+1] );		
+			strcpy( hostname, argv[i+1] );	
+			i++;	
 		}
 		
 		if( strcmp( argv[i], "-p" ) == 0 || strcmp( argv[i], "--port" ) == 0 ) 
 		{
 			portFlag = 1;
-			strcpy( port, argv[i+1] );		
+			strcpy( port, argv[i+1] );	
+			i++;		
 		}
 
 		if( strcmp( argv[i], "-n" ) == 0 || strcmp( argv[i], "--username" ) == 0 ) 
 		{
 			userFlag = 1;
-			strcpy( user, argv[i+1] );		
+			strcpy( user, argv[i+1] );	
+			i++;		
 		}
 
 		if( strcmp( argv[i], "-P" ) == 0 || strcmp( argv[i], "--password" ) == 0 ) 
 		{
 			passwordFlag = 1;
-			strcpy( password, argv[i+1] );		
+			strcpy( password, argv[i+1] );	
+			i++;		
 		}
 
 		if( strcmp( argv[i], "-m" ) == 0 || strcmp( argv[i], "--mode" ) == 0 ) 
 		{
 			modeFlag = 1;
-			strcpy( mode, argv[i+1] );		
+			strcpy( mode, argv[i+1] );	
+			i++;		
 		}
 		
 
 		if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "--logfile" ) == 0 ) 
 		{
 			logfileFlag = 1;
-			strcpy( logfile, argv[i+1] );		
+			strcpy( logfile, argv[i+1] );	
+			i++;		
 		}
 
 
@@ -151,7 +161,8 @@ int main (int argc, char *argv[])
 		{
 			if( comments == 1 )printf("SWARM BABY SWARM\n");
 			swarmFlag = 1;
-			strcpy( swarmconfigfile, argv[i+1] );		
+			strcpy( swarmconfigfile, argv[i+1] );	
+			i++;		
 		}
 
 
