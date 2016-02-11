@@ -13,11 +13,12 @@
 
 #define MAXLINE 1024
 
-//0: no comments, 1: all comments, 2: specific comments etc
-int comments = 0; 
+//0: no comments, 1: all comments, 2: control messages
+int comments = 1; 
 //flags for when a keyword is detected
 int fileFlag = 0, serverFlag = 0, portFlag = 0, userFlag = 0, passwordFlag = 0,
 	activeFlag = 0, modeFlag = 0, logfileFlag = 0, swarmFlag = 0, numbytesFlag = 0;
+FILE *fi;
 
 int help () 
 {
@@ -32,7 +33,36 @@ int version()
 }
 
 
+//client to server printf
+int StoCPrintf( char recv[] )
+{
 
+	if( logfileFlag == 1 )
+	{
+		if( comments == 1 || comments == 2 )printf( "S->C: %s", recv );	
+		fprintf( fi, "S->C: %s", recv );
+	}	
+	else 
+	{
+		printf( "S->C: %s", recv );
+	}
+
+}
+
+int CtoSPrintf( char recv[] )
+{
+
+	if( logfileFlag == 1 )
+	{
+		if( comments == 1 || comments == 2 )printf( "C->S: %s", recv );	
+		fprintf( fi, "C->S: %s", recv );
+	}	
+	else 
+	{
+		printf( "C->S: %s", recv );
+	}
+
+}
 
 int main (int argc, char *argv[])
 {
@@ -44,6 +74,7 @@ int main (int argc, char *argv[])
 	strcpy( user, "anonymous" );
 	strcpy( password, "user@localhost.localnet" );
 	strcpy( mode, "binary" );
+	strcpy( logfile, "-" );
 	//mode: activeFlag: 0 = passive, 1 = active.
 	//write: log?
 	
@@ -225,7 +256,19 @@ int main (int argc, char *argv[])
 		printf( "Error. No file specified.  \n" );
 		return -1;
 	}
-
+	
+	//write: how to log output vs storing
+	//replace each printf with a function that either printf's or prints to a file
+	if( logfileFlag == 1 )
+	{
+		//write: real code for recording output
+		if( comments == 1 )printf( "Record log into file %s.\n", logfile );
+		fi = fopen( logfile, "w" );
+	}
+	if( logfileFlag == 2 || logfileFlag == 0)
+	{
+		if( comments == 1 )printf( "Print out log to stdout.\n" );
+	}
 	struct hostent *server;
 	struct sockaddr_in servAddr;
 
@@ -261,26 +304,17 @@ int main (int argc, char *argv[])
 		if( comments == 1 ) printf( "Connected to %s.\n", hostname );
 	}	
 
-	//write: how to log output vs storing
-	//replace each printf with a function that either printf's or prints to a file
-	if( logfileFlag == 1 )
-	{
-		//write: real code for recording output
-		if( comments == 1 )printf( "Record log into file %s.\n", logfile );
-	}
-	if( logfileFlag == 2 )
-	{
-		if( comments == 1 )printf( "Print out log to stdout.\n" );
-	}
+	
 
 	//strings for storing send/receive lines to/from server
 	char *temp;
 	char recv[ MAXLINE ];
 	char send[ MAXLINE ];
-	//will need to flush recv with subsequent reads
-	//memset( recv, 0, sizeof( recv ) );
+
+	//first read
 	read( sock, recv, MAXLINE );
-	printf( "%s", recv );
+	//printf( "S->C: %s", recv );
+	StoCPrintf( recv );
 	temp = strtok(recv, " ");
     	if ( strcmp( temp, "220" ) != 0 )
     	{
@@ -294,44 +328,58 @@ int main (int argc, char *argv[])
 	strcpy( send, "USER " );
 	strcat( send, user );
 	strcat( send, "\n" );
-	printf( "%s", send );
+	CtoSPrintf( send );
 	write( sock, send, strlen( send ) );
 
 	memset( recv, 0, sizeof( recv ) );
 	if( comments == 1 ) printf( "second read\n" );
-	//fflush(stdout);
 	read( sock, recv, MAXLINE );
-	printf( "%s", recv );
-	
+	StoCPrintf( recv );
+		
 	memset( send, 0, sizeof( send ) );
 	strcpy( send, "PASS " );
 	strcat( send, password );
 	strcat( send, "\n" );
-	printf( "%s", send );
+	CtoSPrintf( send );
 	write( sock, send, strlen( send ) );
 
-	memset( recv, 0, sizeof( recv ) );
-	if( comments == 1 ) printf( "third read\n" );
-	//fflush(stdout);
-	read( sock, recv, MAXLINE );
-	printf( "%s", recv );
 
+	if( comments == 1 ) printf( "third read\n" );
+	//scan through each character until you find an integer+space which ends third S->C message
 	int endOfMessage = 0;	
-	//scan through each character until you find an integer+space
+	int firstStoC = 0;
 	while( endOfMessage == 0 )
-	{	
+	{ 
+		//integerFlag keeps track of when an integer is read. If a space follows, end loop.
 		int integerFlag = 0;
-		for( int i = 0; i < strlen( recv ) ; i++ )
-		{
-			if( isspace( recv[i] ) && isdigit( recv[ i-1 ] ) ) endOfMessage = 1;
-		}
+		//first line needs to include "S->C: ". This makes sure this is only printed on the first line.
+		char StoC[ MAXLINE ];
+		if( firstStoC == 0 )strcpy( StoC, "S->C: " );		
+		else strcpy( StoC, "" );
+		firstStoC++;
+
 		memset( recv, 0, sizeof( recv ) );
 		read( sock, recv, MAXLINE );
-		printf( "%s", recv );
+
+		for( int i = 0; i < strlen( recv ) ; i++ )
+		{
+			if( comments == -1 ) printf ("end of message\n" );
+			if( isspace( recv[i] ) && isdigit( recv[ i-1 ] ) ) endOfMessage = 1;
+		}
+		
+		if( logfileFlag != 1 )printf( "%s%s", StoC, recv );
+		else if ( logfileFlag == 1 )
+		{
+			if( comments == 1 || comments == 2)printf( "%s%s", StoC, recv );
+			fprintf( fi, "%s%s", StoC, recv );
+		}	
+		
 	}	
 
 
 
+
+	if( logfileFlag == 1 ) fclose( fi );
 	return 0;
 	
 }
