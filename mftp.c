@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <netdb.h> 
 
 #define MAXLINE 1024
 
@@ -24,6 +25,9 @@ int version()
 	return 0;
 }
 
+
+
+
 int main (int argc, char *argv[])
 {
 	char arg1[MAXLINE], arg2[MAXLINE], arg3[MAXLINE];
@@ -31,6 +35,15 @@ int main (int argc, char *argv[])
 		password[MAXLINE], mode[MAXLINE], logfile[MAXLINE], swarmconfigfile[MAXLINE];
 	//default port is 21.	
 	strcpy( port, "21" );
+
+	int sock;
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+ 	if (sock < 0) 
+	{
+		printf("ERROR. Unable to open socket.");
+		return -1;
+	}	
+
 	//when mftp is run without parameters; defaults to --help
 	if( argc == 1 ) 
 	{
@@ -39,14 +52,6 @@ int main (int argc, char *argv[])
 	}	
 
 	if( comments == 1 ) printf( "Num Arguments: %d\n", argc );
-		
-	if( argc < 1 ) strcpy( arg1, argv[1] );
-	if( argc < 2 ) strcpy( arg2, argv[2] );
-
-	//use while loop to go through argv[i] from i=0 to last one (check if each one argv[i] exist)?
-	//check each argv against keywords, and if keyword accepts argument: check argv[i+1] is an
-	//appropriate argument
-	//for each keyword that is found, set the flag 
 
 
 	//runs through all parameters if there is one or more, and reacts according to keywords
@@ -86,10 +91,11 @@ int main (int argc, char *argv[])
 		{
 			if( i+1 == argc )
 			{
-				printf( "No argument for %s. Exiting.\n" , argv[i]);
-				return 0;
+				printf( "Error. No argument for %s. \n" , argv[i]);
+				return -1;
 			}	
-			else if( strcmp( argv[i+1], "-h" ) == 0 || strcmp( argv[i+1], "--help" ) == 0 ||  				strcmp( argv[i+1], "-v" ) == 0 || strcmp( argv[i+1], "--version" ) == 0 || 
+			else if( strcmp( argv[i+1], "-h" ) == 0 || strcmp( argv[i+1], "--help" ) == 0 || 
+ 			strcmp( argv[i+1], "-v" ) == 0 || strcmp( argv[i+1], "--version" ) == 0 || 
 			strcmp( argv[i+1], "-s" ) == 0 || strcmp( argv[i+1], "--server" ) == 0 || 
 			strcmp( argv[i+1], "-f" ) == 0 || strcmp( argv[i+1], "--file" ) == 0 || 
 			strcmp( argv[i+1], "-p" ) == 0 || strcmp( argv[i+1], "--port" ) == 0 || 
@@ -100,8 +106,8 @@ int main (int argc, char *argv[])
 			strcmp( argv[i+1], "-l" ) == 0 || strcmp( argv[i+1], "--log" ) == 0 ||
 			strcmp( argv[i+1], "-w" ) == 0 || strcmp( argv[i+1], "--swarm" ) == 0 )
  			{
-				printf( "No argument for %s. Exiting.\n" , argv[i]);
-				return 0;
+				printf( "Error. No argument for %s. \n" , argv[i]);
+				return -1;
 			}
 		}
 		
@@ -113,35 +119,35 @@ int main (int argc, char *argv[])
 			i++;	
 		}
 
-		if( strcmp( argv[i], "-s" ) == 0 || strcmp( argv[i], "--server" ) == 0 ) 
+		else if( strcmp( argv[i], "-s" ) == 0 || strcmp( argv[i], "--server" ) == 0 ) 
 		{
 			serverFlag = 1;
 			strcpy( hostname, argv[i+1] );	
 			i++;	
 		}
 		
-		if( strcmp( argv[i], "-p" ) == 0 || strcmp( argv[i], "--port" ) == 0 ) 
+		else if( strcmp( argv[i], "-p" ) == 0 || strcmp( argv[i], "--port" ) == 0 ) 
 		{
 			portFlag = 1;
 			strcpy( port, argv[i+1] );	
 			i++;		
 		}
 
-		if( strcmp( argv[i], "-n" ) == 0 || strcmp( argv[i], "--username" ) == 0 ) 
+		else if( strcmp( argv[i], "-n" ) == 0 || strcmp( argv[i], "--username" ) == 0 ) 
 		{
 			userFlag = 1;
 			strcpy( user, argv[i+1] );	
 			i++;		
 		}
 
-		if( strcmp( argv[i], "-P" ) == 0 || strcmp( argv[i], "--password" ) == 0 ) 
+		else if( strcmp( argv[i], "-P" ) == 0 || strcmp( argv[i], "--password" ) == 0 ) 
 		{
 			passwordFlag = 1;
 			strcpy( password, argv[i+1] );	
 			i++;		
 		}
 
-		if( strcmp( argv[i], "-m" ) == 0 || strcmp( argv[i], "--mode" ) == 0 ) 
+		else if( strcmp( argv[i], "-m" ) == 0 || strcmp( argv[i], "--mode" ) == 0 ) 
 		{
 			modeFlag = 1;
 			strcpy( mode, argv[i+1] );	
@@ -149,7 +155,7 @@ int main (int argc, char *argv[])
 		}
 		
 
-		if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "--logfile" ) == 0 ) 
+		else if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "--logfile" ) == 0 ) 
 		{
 			logfileFlag = 1;
 			strcpy( logfile, argv[i+1] );	
@@ -157,18 +163,63 @@ int main (int argc, char *argv[])
 		}
 
 
-		if( strcmp( argv[i], "-w" ) == 0 || strcmp( argv[i], "--swarm" ) == 0 ) 
+		else if( strcmp( argv[i], "-w" ) == 0 || strcmp( argv[i], "--swarm" ) == 0 ) 
 		{
 			if( comments == 1 )printf("SWARM BABY SWARM\n");
 			swarmFlag = 1;
 			strcpy( swarmconfigfile, argv[i+1] );	
 			i++;		
 		}
-
+		else 
+		{
+			printf( "Error. Improper argument: %s.  \n", argv[i] );
+			return -1;
+		}
 
 	}
 
-			
+	if( comments == 1 ) printf( "hostname: %s, filename: %s \n", hostname, filename );
+	
+	//checks if hostname and filename were specified. If not, exit
+	if( strlen( hostname ) == 0 )
+	{
+		printf( "Error. No host specified.  \n" );
+		return -1;
+	}
 
+	if( strlen( filename ) == 0 )
+	{
+		printf( "Error. No file specified.  \n" );
+		return -1;
+	}
 
+	struct hostent *server;
+	struct sockaddr_in servAddr;
+
+	//sets server to actual address of hostname
+	server = gethostbyname( hostname );
+	if (server == NULL) 
+	{
+        	printf( "ERROR. No such host. \n");
+        	return(-1);
+    	}
+	else
+	{
+		if( comments == 1 ) printf( "Server Exists.\n" );
+	}	
+	
+	//Zeros out servAddr
+	bzero( ( char * ) &servAddr, sizeof( servAddr ));
+	//sets address family to Internet
+	servAddr.sin_family = AF_INET;
+	//copies bits of server (address) to servAddr
+	bcopy( ( char * )server->h_addr, ( char * )&servAddr.sin_addr.s_addr, server->h_length );
+	//sets port number. Default: 21
+	servAddr.sin_port = htons( atoi (port ) );
+	if( comments == 1 ) printf( "%s\n", port );
+	if( connect( sock, ( struct sockaddr * )&servAddr, sizeof( servAddr ) ) < 0) 
+	{
+		printf("ERROR. Unable to connect to server.\n");
+		return(-1);
+	}
 }
