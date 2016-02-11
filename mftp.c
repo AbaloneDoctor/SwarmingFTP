@@ -1,9 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <string.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 #define MAXLINE 1024
 
@@ -11,7 +16,7 @@
 int comments = 1; 
 //flags for when a keyword is detected
 int fileFlag = 0, serverFlag = 0, portFlag = 0, userFlag = 0, passwordFlag = 0,
-	activeFlag = 0, modeFlag = 0, logfileFlag = 0, swarmFlag = 0;
+	activeFlag = 0, modeFlag = 0, logfileFlag = 0, swarmFlag = 0, numbytesFlag = 0;
 
 int help () 
 {
@@ -33,8 +38,14 @@ int main (int argc, char *argv[])
 	char arg1[MAXLINE], arg2[MAXLINE], arg3[MAXLINE];
 	char filename[MAXLINE], hostname[MAXLINE], port[MAXLINE], user[MAXLINE], 
 		password[MAXLINE], mode[MAXLINE], logfile[MAXLINE], swarmconfigfile[MAXLINE];
-	//default port is 21.	
+	//default values:	
 	strcpy( port, "21" );
+	strcpy( user, "anonymous" );
+	strcpy( password, "user@localhost.localnet" );
+	strcpy( mode, "binary" );
+	//write: default for behavior is passive
+	//write: log?
+	
 
 	int sock;
 	sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -104,7 +115,8 @@ int main (int argc, char *argv[])
 			strcmp( argv[i+1], "-a" ) == 0 || strcmp( argv[i+1], "--active" ) == 0 || 
 			strcmp( argv[i+1], "-m" ) == 0 || strcmp( argv[i+1], "--mode" ) == 0 || 
 			strcmp( argv[i+1], "-l" ) == 0 || strcmp( argv[i+1], "--log" ) == 0 ||
-			strcmp( argv[i+1], "-w" ) == 0 || strcmp( argv[i+1], "--swarm" ) == 0 )
+			strcmp( argv[i+1], "-w" ) == 0 || strcmp( argv[i+1], "--swarm" ) == 0 || 
+			strcmp( argv[i+1], "-b" ) == 0 )
  			{
 				printf( "Error. No argument for %s. \n" , argv[i]);
 				return -1;
@@ -159,6 +171,8 @@ int main (int argc, char *argv[])
 		{
 			logfileFlag = 1;
 			strcpy( logfile, argv[i+1] );	
+			//if logfile argument is named "-" flag for printout to stdout
+			if( strcmp( argv[i+1], "-" ) == 0 ) logfileFlag = 2;
 			i++;		
 		}
 
@@ -170,6 +184,12 @@ int main (int argc, char *argv[])
 			strcpy( swarmconfigfile, argv[i+1] );	
 			i++;		
 		}
+	
+		else if( strcmp( argv[i], "-b" ) == 0 ) 
+		{
+			numbytesFlag = 1;
+		}
+
 		else 
 		{
 			printf( "Error. Improper argument: %s.  \n", argv[i] );
@@ -180,6 +200,12 @@ int main (int argc, char *argv[])
 
 	if( comments == 1 ) printf( "hostname: %s, filename: %s \n", hostname, filename );
 	
+	if( numbytesFlag == 1 && swarmFlag == 0 )
+	{
+		printf( "Error. num-bytes option called without --swarm.  \n" );
+		return -1;
+	}
+
 	//checks if hostname and filename were specified. If not, exit
 	if( strlen( hostname ) == 0 )
 	{
@@ -201,7 +227,7 @@ int main (int argc, char *argv[])
 	if (server == NULL) 
 	{
         	printf( "ERROR. No such host. \n");
-        	return(-1);
+        	return(1);
     	}
 	else
 	{
@@ -216,10 +242,57 @@ int main (int argc, char *argv[])
 	bcopy( ( char * )server->h_addr, ( char * )&servAddr.sin_addr.s_addr, server->h_length );
 	//sets port number. Default: 21
 	servAddr.sin_port = htons( atoi (port ) );
-	if( comments == 1 ) printf( "%s\n", port );
+
+	//Connects to server
 	if( connect( sock, ( struct sockaddr * )&servAddr, sizeof( servAddr ) ) < 0) 
 	{
 		printf("ERROR. Unable to connect to server.\n");
 		return(-1);
 	}
+	else
+	{
+		if( comments == 1 ) printf( "Connected to %s.\n", hostname );
+	}	
+
+	//write: how to log output vs storing
+	if( logfileFlag == 1 )
+	{
+		//write: real code for recording output
+		if( comments == 1 )printf( "Record log into file %s.\n", logfile );
+	}
+	if( logfileFlag == 2 )
+	{
+		if( comments == 1 )printf( "Print out log to stdout.\n" );
+	}
+
+	char *temp;
+	char recv[ MAXLINE ];
+	//will need to flush recv with subsequent reads
+	//memset( recv, 0, sizeof( recv ) );
+	read( sock, recv, MAXLINE );
+	printf( "%s", recv );
+	temp = strtok(recv, " ");
+    	if ( strcmp( temp, "220" ) != 0 )
+    	{
+    		printf( "220 reply not received from server.\n" );
+    		exit(0);
+    	}		
+
+	char send[ MAXLINE ];
+	char sendAddress[ MAXLINE ];
+	
+
+	strcpy( send, "USER " );
+	strcat( send, user );
+	printf( "%s\n", send );
+	write( sock, send, strlen( send ) );
+
+	memset( recv, 0, sizeof( recv ) );
+	if( comments == 1 ) printf( "right before second read\n" );
+	read( sock, recv, MAXLINE );
+	printf( "%s\n", recv );
+
+
+	return 0;
+	
 }
