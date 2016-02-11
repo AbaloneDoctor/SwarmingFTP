@@ -5,6 +5,7 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <ctype.h>
 
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -13,7 +14,7 @@
 #define MAXLINE 1024
 
 //0: no comments, 1: all comments, 2: specific comments etc
-int comments = 1; 
+int comments = 0; 
 //flags for when a keyword is detected
 int fileFlag = 0, serverFlag = 0, portFlag = 0, userFlag = 0, passwordFlag = 0,
 	activeFlag = 0, modeFlag = 0, logfileFlag = 0, swarmFlag = 0, numbytesFlag = 0;
@@ -43,7 +44,7 @@ int main (int argc, char *argv[])
 	strcpy( user, "anonymous" );
 	strcpy( password, "user@localhost.localnet" );
 	strcpy( mode, "binary" );
-	//write: default for behavior is passive
+	//mode: activeFlag: 0 = passive, 1 = active.
 	//write: log?
 	
 
@@ -189,6 +190,12 @@ int main (int argc, char *argv[])
 		{
 			numbytesFlag = 1;
 		}
+		
+		else if( strcmp( argv[i], "-a" ) == 0 || strcmp( argv[i], "--active" ) == 0 ) 
+		{
+			activeFlag = 1;
+		}
+
 
 		else 
 		{
@@ -255,6 +262,7 @@ int main (int argc, char *argv[])
 	}	
 
 	//write: how to log output vs storing
+	//replace each printf with a function that either printf's or prints to a file
 	if( logfileFlag == 1 )
 	{
 		//write: real code for recording output
@@ -265,8 +273,10 @@ int main (int argc, char *argv[])
 		if( comments == 1 )printf( "Print out log to stdout.\n" );
 	}
 
+	//strings for storing send/receive lines to/from server
 	char *temp;
 	char recv[ MAXLINE ];
+	char send[ MAXLINE ];
 	//will need to flush recv with subsequent reads
 	//memset( recv, 0, sizeof( recv ) );
 	read( sock, recv, MAXLINE );
@@ -278,19 +288,48 @@ int main (int argc, char *argv[])
     		exit(0);
     	}		
 
-	char send[ MAXLINE ];
 	char sendAddress[ MAXLINE ];
-	
 
+	//REMEMBER TO USE NEWLINE TO DELIMIT WRITES
 	strcpy( send, "USER " );
 	strcat( send, user );
-	printf( "%s\n", send );
+	strcat( send, "\n" );
+	printf( "%s", send );
 	write( sock, send, strlen( send ) );
 
 	memset( recv, 0, sizeof( recv ) );
-	if( comments == 1 ) printf( "right before second read\n" );
+	if( comments == 1 ) printf( "second read\n" );
+	//fflush(stdout);
 	read( sock, recv, MAXLINE );
-	printf( "%s\n", recv );
+	printf( "%s", recv );
+	
+	memset( send, 0, sizeof( send ) );
+	strcpy( send, "PASS " );
+	strcat( send, password );
+	strcat( send, "\n" );
+	printf( "%s", send );
+	write( sock, send, strlen( send ) );
+
+	memset( recv, 0, sizeof( recv ) );
+	if( comments == 1 ) printf( "third read\n" );
+	//fflush(stdout);
+	read( sock, recv, MAXLINE );
+	printf( "%s", recv );
+
+	int endOfMessage = 0;	
+	//scan through each character until you find an integer+space
+	while( endOfMessage == 0 )
+	{	
+		int integerFlag = 0;
+		for( int i = 0; i < strlen( recv ) ; i++ )
+		{
+			if( isspace( recv[i] ) && isdigit( recv[ i-1 ] ) ) endOfMessage = 1;
+		}
+		memset( recv, 0, sizeof( recv ) );
+		read( sock, recv, MAXLINE );
+		printf( "%s", recv );
+	}	
+
 
 
 	return 0;
