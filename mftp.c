@@ -15,7 +15,7 @@
 
 #define MAXLINE 1024
 
-//0: no comments, 1: all comments, 2: control messages
+//0: no comments, 1: all comments, 2: C<->S control messages
 int comments = 1; 
 int testInput = 0;
 //flags for when a keyword is detected
@@ -295,7 +295,7 @@ int main (int argc, char *argv[])
 	//copies bits of server (address) to servAddr
 	bcopy( ( char * )server->h_addr, ( char * )&servAddr.sin_addr.s_addr, server->h_length );
 	//sets port number. Default: 21
-	servAddr.sin_port = htons( atoi (port ) );
+	servAddr.sin_port = htons( atoi ( port ) );
 
 	//Connects to server
 	if( connect( sock, ( struct sockaddr * )&servAddr, sizeof( servAddr ) ) < 0) 
@@ -401,9 +401,9 @@ int main (int argc, char *argv[])
 		
 	
 
-		char input[ MAXLINE ];
-		char input2[ MAXLINE ];
-		char input3[ MAXLINE ];
+		char input[ 20 ];
+		char input2[ 20 ];
+		char input3[ 20 ];
 		int count;		
 
 		scanf( "%s" , input);
@@ -454,6 +454,7 @@ int main (int argc, char *argv[])
 	{
 		if( comments == 1 ) printf ("Passive mode\n" );
 
+		//sends passive command
 		memset( send, 0, sizeof( send ) );
 		strcpy( send, "PASV\n" );
 		CtoSPrintf( send );
@@ -463,14 +464,17 @@ int main (int argc, char *argv[])
 		read( sock, recv, MAXLINE );
 		StoCPrintf( recv );	
 		
+		//parses server response message for IP addr and port num
 		int recordNumFlag = 0;
-		char addr[ MAXLINE ];
-		char serverPort[ MAXLINE ];
-
+		char addr[ 20 ];
+		char serverPort[ 10 ];
+		char serverPort2[ 10 ];
 		//j incrementor for addr char array			
 		int j = 0;
-		//k icnrementor for port char array 
+		//k incrementor for port char array part 1
 		int k = 0;
+		//l incrementor for port char array part 2
+		int l = 0;
 		int commas = 0;
 		for( int i = 0; i < strlen( recv ) ; i++ )
 		{
@@ -487,33 +491,84 @@ int main (int argc, char *argv[])
 					//printf( "commas: %d\n", commas );
 					commas++;
 				}
-				else if( recv[i] != ',' && commas <= 3) addr[j] = temp;
+				if( recv[i] != ',' && commas <= 3) addr[j] = temp;
 				
-				if( recv[i] != ',' && commas > 3 ) 
+				if( recv[i] != ',' && commas == 4 ) 
 				{
 					serverPort[k] = temp;
 					k++;
 				}
-
+				if( recv[i] != ',' && commas == 5 )
+				{
+					serverPort2[l] = temp;
+					l++;
+				}
 				j++;
 			}
 			if( recv[i] == '(' ) recordNumFlag = 1;
 		}
 
-		if( comments == 1 ) printf( "port: %s\n", serverPort );		
-		if( comments == 1 ) printf( "addr: %s\n", addr );
 
+		if( comments == 1 ) printf( "addr: %s\n", addr );
+		if( comments == 1 ) printf( "port: %s\n", serverPort );		
+		if( comments == 1 ) printf( "port: %s\n", serverPort2 );		
 		
-				
-			
+		char realPort[ 10 ];
+		int portPart1 = atoi( serverPort );
+		int portPart2 = atoi( serverPort2 );
+		portPart1 = portPart1 * 256;
+		portPart1 = portPart1 + portPart2;
+		if( comments == 1 ) printf( "real port: %d\n", portPart1 );
+
+		//create new socket for data connection
+		int ctosSocket;
+		ctosSocket = socket( AF_INET, SOCK_STREAM, 0 );
+		if( ctosSocket < 0 ) 
+		{
+			printf( "ERROR. Could not open socket. \n" );
+		}
+
 		struct sockaddr_in connectionAddr;
 		struct hostent *dataConnection;	
-		//dataConnection = gethostbyname( 
-			
 
+		dataConnection = gethostbyname( addr );
+		if (server == NULL) 
+		{
+			printf( "ERROR. No such host. \n");
+			return(1);
+	    	}
+		else
+		{
+			if( comments == 1 ) printf( "Server Exists.\n" );
+		}	
+		//clears out connectionAddr
+		bzero( ( char *)&connectionAddr, sizeof( connectionAddr ) );
+		//sets family type to internet
+		connectionAddr.sin_family = AF_INET;
+		//copy addr to socket
+		bcopy( ( char * )dataConnection->h_addr, 
+			( char * )&connectionAddr.sin_addr.s_addr, dataConnection->h_length );
+		//set port number
+		//connectionAddr.sin_port = htons( atoi( serverPort ) );
+		connectionAddr.sin_port = htons( portPart1 );
+		//tries to connect	
+		if( comments == 1 )printf( "Attempting connect. \n" );	
+		if( connect( ctosSocket, ( struct sockaddr * )&connectionAddr, 
+			sizeof( connectionAddr )) < 0) 
+        	{	
+			printf( "ERROR. Can't connect to server on data connection.\n" );
+			return 1;
+		}
+		else
+		{
+			if( comments == 1 ) printf( "Connected to %s.\n", addr );
+		}	
+	
 	}
 
-
+	//memset( recv, 0, sizeof( recv ) );
+	//read( sock, recv, MAXLINE );
+	//StoCPrintf( recv );
 
 /*
 	//Code for port
@@ -532,18 +587,28 @@ int main (int argc, char *argv[])
 	StoCPrintf( recv );
 */
 
-/*
+
 	memset( send, 0, sizeof( send ) );
 	strcpy( send, "RETR " );
 	strcat( send, filename );
 	strcat( send, "\n" );
 	CtoSPrintf( send );
 	write( sock, send, strlen( send ) );
-	
+
+//FIX THIS SHIT
+	char buffer[ MAXLINE ];
+	int size;
+	recv(sock, buffer, sizeof(buffer), 0);
+	if(!size)
+	{
+		printf("No such file on the remote directory\n\n");
+	}
+
+
 	memset( recv, 0, sizeof( recv ) );
 	read( sock, recv, MAXLINE );
 	StoCPrintf( recv );
-*/
+
 
 
 
