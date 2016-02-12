@@ -6,6 +6,8 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <ctype.h>
+#include <ifaddrs.h>
+
 
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -15,7 +17,7 @@
 
 //0: no comments, 1: all comments, 2: control messages
 int comments = 1; 
-int testInput = 1;
+int testInput = 0;
 //flags for when a keyword is detected
 int fileFlag = 0, serverFlag = 0, portFlag = 0, userFlag = 0, passwordFlag = 0,
 	activeFlag = 0, modeFlag = 0, logfileFlag = 0, swarmFlag = 0, numbytesFlag = 0;
@@ -270,6 +272,7 @@ int main (int argc, char *argv[])
 	{
 		if( comments == 1 )printf( "Print out log to stdout.\n" );
 	}
+
 	struct hostent *server;
 	struct sockaddr_in servAddr;
 
@@ -445,8 +448,91 @@ int main (int argc, char *argv[])
 	{
 		if( comments == 1 ) printf( "Setting port\n" );
 	}
+	
+	//if in default passive mode.
+	if( activeFlag == 0 )
+	{
+		if( comments == 1 ) printf ("Passive mode\n" );
+
+		memset( send, 0, sizeof( send ) );
+		strcpy( send, "PASV\n" );
+		CtoSPrintf( send );
+		write( sock, send, strlen( send ) );
+	
+		memset( recv, 0, sizeof( recv ) );
+		read( sock, recv, MAXLINE );
+		StoCPrintf( recv );	
+		
+		int recordNumFlag = 0;
+		char addr[ MAXLINE ];
+		char serverPort[ MAXLINE ];
+
+		//j incrementor for addr char array			
+		int j = 0;
+		//k icnrementor for port char array 
+		int k = 0;
+		int commas = 0;
+		for( int i = 0; i < strlen( recv ) ; i++ )
+		{
+
+			if( recv[i] == ')' ) recordNumFlag = 0;
+			if( recordNumFlag == 1  )
+			{
+
+				char temp;
+				temp = recv[i];
+				if( recv[i] == ',' ) 
+				{
+					if ( commas < 3 )addr[j] = '.';
+					//printf( "commas: %d\n", commas );
+					commas++;
+				}
+				else if( recv[i] != ',' && commas <= 3) addr[j] = temp;
+				
+				if( recv[i] != ',' && commas > 3 ) 
+				{
+					serverPort[k] = temp;
+					k++;
+				}
+
+				j++;
+			}
+			if( recv[i] == '(' ) recordNumFlag = 1;
+		}
+
+		if( comments == 1 ) printf( "port: %s\n", serverPort );		
+		if( comments == 1 ) printf( "addr: %s\n", addr );
+
+		
+				
+			
+		struct sockaddr_in connectionAddr;
+		struct hostent *dataConnection;	
+		//dataConnection = gethostbyname( 
+			
+
+	}
 
 
+
+/*
+	//Code for port
+	struct ifaddrs *ifaddr;
+	getifaddrs(&ifaddr);
+
+	memset( send, 0, sizeof( send ) );
+	strcpy( send, "PORT " );
+	strcat( send, filename );
+	strcat( send, "\n" );
+	CtoSPrintf( send );
+	write( sock, send, strlen( send ) );
+	
+	memset( recv, 0, sizeof( recv ) );
+	read( sock, recv, MAXLINE );
+	StoCPrintf( recv );
+*/
+
+/*
 	memset( send, 0, sizeof( send ) );
 	strcpy( send, "RETR " );
 	strcat( send, filename );
@@ -457,7 +543,7 @@ int main (int argc, char *argv[])
 	memset( recv, 0, sizeof( recv ) );
 	read( sock, recv, MAXLINE );
 	StoCPrintf( recv );
-
+*/
 
 
 
