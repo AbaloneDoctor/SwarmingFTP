@@ -15,6 +15,7 @@
 
 //0: no comments, 1: all comments, 2: control messages
 int comments = 1; 
+int testInput = 1;
 //flags for when a keyword is detected
 int fileFlag = 0, serverFlag = 0, portFlag = 0, userFlag = 0, passwordFlag = 0,
 	activeFlag = 0, modeFlag = 0, logfileFlag = 0, swarmFlag = 0, numbytesFlag = 0;
@@ -373,8 +374,89 @@ int main (int argc, char *argv[])
 			if( comments == 1 || comments == 2)printf( "%s%s", StoC, recv );
 			fprintf( fi, "%s%s", StoC, recv );
 		}	
-		
 	}	
+	
+	/*
+	memset( send, 0, sizeof( send ) );
+	strcpy( send, "PASV" );
+	//strcat( send, port );
+	strcat( send, "\n" );
+	CtoSPrintf( send );
+	write( sock, send, strlen( send ) );
+	
+	memset( recv, 0, sizeof( recv ) );
+	read( sock, recv, MAXLINE );
+	StoCPrintf( recv );	
+	*/
+
+	//int a = 15;
+	//printf("0x%x\n", a );
+
+	if( testInput == 1 )
+	{
+		printf( "Input command\n" );
+		
+	
+
+		char input[ MAXLINE ];
+		char input2[ MAXLINE ];
+		char input3[ MAXLINE ];
+		int count;		
+
+		scanf( "%s" , input);
+		count = atoi( input );
+		//printf( "%d \n", count );
+		if( count == 1 )
+		{
+		scanf( "%s" , input );
+		strcpy( send, input );
+		}
+		else if ( count == 2 )
+		{
+		scanf( "%s %s", input, input2 );
+		memset( send, 0, sizeof( send ) );
+		strcpy( send, input );
+		strcat( send, " " );
+		strcat( send, input2 );
+		}
+		else if ( count == 3 )
+		{
+		scanf( "%s %s %s", input, input3 );
+		memset( send, 0, sizeof( send ) );
+		strcpy( send, input );
+		strcat( send, " " );
+		strcat( send, input2 );
+		strcat( send, " " );
+		strcat( send, input3 );
+		}
+		strcat( send, "\n" );
+
+		
+		CtoSPrintf( send );
+		write( sock, send, strlen( send ) );
+	
+		memset( recv, 0, sizeof( recv ) );
+		read( sock, recv, MAXLINE );
+		StoCPrintf( recv );
+	}
+
+	//write: code for setting port number
+	if( portFlag == 1 )
+	{
+		if( comments == 1 ) printf( "Setting port\n" );
+	}
+
+
+	memset( send, 0, sizeof( send ) );
+	strcpy( send, "RETR " );
+	strcat( send, filename );
+	strcat( send, "\n" );
+	CtoSPrintf( send );
+	write( sock, send, strlen( send ) );
+	
+	memset( recv, 0, sizeof( recv ) );
+	read( sock, recv, MAXLINE );
+	StoCPrintf( recv );
 
 
 
