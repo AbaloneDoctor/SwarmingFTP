@@ -67,6 +67,120 @@ int CtoSPrintf( char recv[] )
 
 }
 
+int connectServer( char *host, int port)
+{
+/*
+	int sock;
+	sock = socket( AF_INET, SOCK_STREAM, 0 );
+	if( sock < 0 ) 
+	{
+		printf( "ERROR. Could not open socket. \n" );
+		exit(-1);
+	}
+	else
+	{
+		if( comments == 1 ) printf( "Socket created.\n" );
+	}
+	
+	struct sockaddr_in addr;
+	struct hostent *server;	//dataconncetion
+	
+	server = gethostbyname( host );
+	if (server == NULL) 
+	{
+		printf( "ERROR. No such host. \n");
+		exit(1);
+    	}
+	else
+	{
+		if( comments == 1 ) printf( "Server Exists.\n" );
+	}	
+	bzero( ( char *)&addr, sizeof( addr ) );
+	addr.sin_family = AF_INET;
+	bcopy( ( char * )server->h_addr, 
+		( char * )&addr.sin_addr.s_addr, server->h_length );
+	addr.sin_port = htons( port );
+	if( comments == 1 )printf( "Attempting connect. \n" );	
+	if( connect( sock, ( struct sockaddr * )&addr, 
+		sizeof( addr )) < 0) 
+	{	
+		printf( "ERROR. Can't connect to server on data connection.\n" );
+		exit(1);
+	}
+	else
+	{
+		if( comments == 1 ) printf( "Connected to %s.\n", addr );
+	}
+	return sock;
+*/
+int ctosSocket;
+		ctosSocket = socket( AF_INET, SOCK_STREAM, 0 );
+		if( ctosSocket < 0 ) 
+		{
+			printf( "ERROR. Could not open socket. \n" );
+			return(-1);
+		}
+
+		struct sockaddr_in connectionAddr;
+		struct hostent *dataConnection;	
+
+		dataConnection = gethostbyname( host );
+		if ( dataConnection == NULL ) 
+		{
+			printf( "ERROR. No such host. \n");
+			return(1);
+	    	}
+		else
+		{
+			if( comments == 1 ) printf( "Server Exists.\n" );
+		}	
+		//clears out connectionAddr
+		bzero( ( char *)&connectionAddr, sizeof( connectionAddr ) );
+		//sets family type to internet
+		connectionAddr.sin_family = AF_INET;
+		//copy addr to socket
+		bcopy( ( char * )dataConnection->h_addr, 
+			( char * )&connectionAddr.sin_addr.s_addr, dataConnection->h_length );
+		//set port number
+		//connectionAddr.sin_port = htons( atoi( serverPort ) );
+		connectionAddr.sin_port = htons( port );
+		//tries to connect	
+		if( comments == 1 )printf( "Attempting connect. \n" );	
+		if( connect( ctosSocket, ( struct sockaddr * )&connectionAddr, 
+			sizeof( connectionAddr )) < 0) 
+        	{	
+			printf( "ERROR. Can't connect to server on data connection.\n" );
+			return 1;
+		}
+		else
+		{
+			if( comments == 1 ) printf( "Connected to %s.\n", host );
+		}	
+
+	if( comments == 1 )printf( "connection succesful\n" );
+	return ctosSocket;
+
+}
+int parseFileSize( char *recv )
+{
+	if( comments == 1 ) printf( "parseFileSize called\n" );
+	char fileSize[ 20 ];
+	int h;
+	int recordFlag = 0;
+	for ( int i = 0; i < strlen( recv ); i++ )
+	{
+		if( recv[i] == ' ' && recordFlag == 1) recordFlag = 0;	
+		if( recordFlag == 1) 
+		{
+			fileSize[h] = recv[i];
+			h++;
+		}
+		if( recv[i] == '(' ) recordFlag = 1;
+	}
+	int size = atoi( fileSize );
+	return size;
+}
+
 int main (int argc, char *argv[])
 {
 	char arg1[MAXLINE], arg2[MAXLINE], arg3[MAXLINE];
@@ -196,8 +310,18 @@ int main (int argc, char *argv[])
 
 		else if( strcmp( argv[i], "-m" ) == 0 || strcmp( argv[i], "--mode" ) == 0 ) 
 		{
-			modeFlag = 1;
-			strcpy( mode, argv[i+1] );	
+			//modeFlag = 1;
+			if( strcmp( argv[i+1], "binary" ) || strcmp( argv[i+1], "BINARY") ) 
+				modeFlag = 1;
+			else if( strcmp( argv[i+1], "ascii" ) || strcmp( argv[i+1], "ASCII" ) )
+				modeFlag = 2;
+			else 
+			{
+				printf( "Error. Improper argument for mode.\n" );
+				return 4;
+			}
+			if( comments == 1 )printf( "modeflag: %d\n", modeFlag );
+			//strcpy( mode, argv[i+1] );	
 			i++;		
 		}
 		
@@ -444,12 +568,42 @@ int main (int argc, char *argv[])
 	}
 
 	//write: code for setting port number
+	//used for active mode
 	if( portFlag == 1 )
 	{
 		if( comments == 1 ) printf( "Setting port\n" );
 	}
+
 	
-	//if in default passive mode.
+	//Binary mode
+	if( modeFlag == 1 )
+	{
+		memset( send, 0, sizeof( send ) );
+		strcpy( send, "TYPE I \n" );
+		CtoSPrintf( send );
+		write( sock, send, strlen( send ) );
+	
+		memset( recv, 0, sizeof( recv ) );
+		read( sock, recv, MAXLINE );
+		StoCPrintf( recv );	
+
+	}
+
+	//ASCII mode
+	if( modeFlag == 2 )
+	{
+		memset( send, 0, sizeof( send ) );
+		strcpy( send, "TYPE A \n" );
+		CtoSPrintf( send );
+		write( sock, send, strlen( send ) );
+	
+		memset( recv, 0, sizeof( recv ) );
+		read( sock, recv, MAXLINE );
+		StoCPrintf( recv );	
+
+	}
+	
+	//in default passive mode.
 	if( activeFlag == 0 )
 	{
 		if( comments == 1 ) printf ("Passive mode\n" );
@@ -520,50 +674,45 @@ int main (int argc, char *argv[])
 		portPart1 = portPart1 + portPart2;
 		if( comments == 1 ) printf( "real port: %d\n", portPart1 );
 
-		//create new socket for data connection
-		int ctosSocket;
-		ctosSocket = socket( AF_INET, SOCK_STREAM, 0 );
-		if( ctosSocket < 0 ) 
-		{
-			printf( "ERROR. Could not open socket. \n" );
-		}
-
-		struct sockaddr_in connectionAddr;
-		struct hostent *dataConnection;	
-
-		dataConnection = gethostbyname( addr );
-		if (server == NULL) 
-		{
-			printf( "ERROR. No such host. \n");
-			return(1);
-	    	}
-		else
-		{
-			if( comments == 1 ) printf( "Server Exists.\n" );
-		}	
-		//clears out connectionAddr
-		bzero( ( char *)&connectionAddr, sizeof( connectionAddr ) );
-		//sets family type to internet
-		connectionAddr.sin_family = AF_INET;
-		//copy addr to socket
-		bcopy( ( char * )dataConnection->h_addr, 
-			( char * )&connectionAddr.sin_addr.s_addr, dataConnection->h_length );
-		//set port number
-		//connectionAddr.sin_port = htons( atoi( serverPort ) );
-		connectionAddr.sin_port = htons( portPart1 );
-		//tries to connect	
-		if( comments == 1 )printf( "Attempting connect. \n" );	
-		if( connect( ctosSocket, ( struct sockaddr * )&connectionAddr, 
-			sizeof( connectionAddr )) < 0) 
-        	{	
-			printf( "ERROR. Can't connect to server on data connection.\n" );
-			return 1;
-		}
-		else
-		{
-			if( comments == 1 ) printf( "Connected to %s.\n", addr );
-		}	
+		//connects to server
+		int sockD = connectServer( addr, portPart1 );
+		
+				
+		if( comments == 1) printf( "in passive mode\n");
+		
+		memset( send, 0, sizeof( send ) );
+		strcpy( send, "RETR " );
+		strcat( send, filename );
+		strcat( send, "\n" );
+		CtoSPrintf( send );
+		write( sock, send, strlen( send ) );
 	
+		memset( recv, 0, sizeof( recv ) );
+		read( sock, recv, MAXLINE );
+		StoCPrintf( recv );
+		
+		int size = parseFileSize( recv );
+		
+/*
+		char fileSize[ 20 ];
+		int h;
+		int recordFlag = 0;
+		if( comments == 1 ) printf( "%s\n", recv );
+		for ( int i = 0; i < strlen( recv ); i++ )
+		{
+			if( recv[i] == ' ' && recordFlag == 1) recordFlag = 0;	
+			if( recordFlag == 1) 
+			{
+				fileSize[h] = recv[i];
+				h++;
+			}
+			if( recv[i] == '(' ) recordFlag = 1;
+		}
+		int size = atoi( fileSize );
+*/
+		if( comments == 1 ) printf( "file size: %d\n", size );
+	
+		
 	}
 
 	//memset( recv, 0, sizeof( recv ) );
@@ -595,7 +744,8 @@ int main (int argc, char *argv[])
 	CtoSPrintf( send );
 	write( sock, send, strlen( send ) );
 
-//FIX THIS SHIT
+//FIX THIS SHIT 
+/*
 	char buffer[ MAXLINE ];
 	int size;
 	recv(sock, buffer, sizeof(buffer), 0);
@@ -604,7 +754,7 @@ int main (int argc, char *argv[])
 		printf("No such file on the remote directory\n\n");
 	}
 
-
+*/
 	memset( recv, 0, sizeof( recv ) );
 	read( sock, recv, MAXLINE );
 	StoCPrintf( recv );
